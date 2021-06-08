@@ -14,9 +14,9 @@ static bool debugFlag = true;
 #include <Wire.h>
 
 // Конфигурация датчиков и актуаторов
-#define DATA_SIGNAL_PIN 3        // Чтобы сигнализировать об успешном (или не очень) сборе данных
+#define DATA_SIGNAL_PIN 5        // Чтобы сигнализировать об успешном (или не очень) сборе данных
 #define CONNECTION_SIGNAL_PIN 4  // Чтобы сигнализировать о подключении NodeMCU сначала друг с другом, а затем к серверу с MQTT-брокером
-#define WORK_SIGNAL_PIN 5        // Чтобы сигнализировать о работе самого микроконтроллера
+#define WORK_SIGNAL_PIN 3        // Чтобы сигнализировать о работе самого микроконтроллера
 #define DHT_PIN 2
 #define MQ135_PIN A0
 #define MQ2_PIN A1
@@ -32,10 +32,10 @@ MQ135 mq135 = MQ135(MQ135_PIN);
 DHT dht(DHT_PIN, DHT11);
 
 void setup() {
-  pinMode(3, OUTPUT);
-  pinMode(4, OUTPUT);
-  pinMode(5, OUTPUT);
-  digitalWrite(5, HIGH); // Если плата работает - заработает светодиод. Так лучше, чем индикация по питанию, т.к. появляется возможность сигнализировать об ошибках
+  pinMode(DATA_SIGNAL_PIN, OUTPUT);
+  pinMode(CONNECTION_SIGNAL_PIN, OUTPUT);
+  pinMode(WORK_SIGNAL_PIN, OUTPUT);
+  digitalWrite(WORK_SIGNAL_PIN, HIGH); // Если плата работает - заработает светодиод. Так лучше, чем индикация по питанию, т.к. появляется возможность сигнализировать об ошибках
   
   dht.begin();
   mq2.begin();
@@ -56,7 +56,7 @@ void loop() {
   
   if (debugFlag) {
     Serial.print("А ето LPG: ");
-    Serial.println(mq2.readLPG());
+    Serial.println(mq2.readSmoke());
     Serial.print("А ето монооксид углерада: ");
     Serial.println(mq2.readCO());
     Serial.print("А ето диоксид углерада: ");

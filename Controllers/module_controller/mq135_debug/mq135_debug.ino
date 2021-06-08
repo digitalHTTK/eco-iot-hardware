@@ -10,8 +10,10 @@ void setup() {
 
 void loop() {
   float ppm = gasSensor.getPPM(); 
+  Serial.print("PPM: ");
   Serial.println(ppm);
 
+  Serial.print("R0: ");
   float rzero = gasSensor.getRZero();
   Serial.println(rzero);
   
