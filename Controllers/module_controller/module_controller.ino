@@ -37,13 +37,13 @@ void setup() {
   pinMode(WORK_SIGNAL_PIN, OUTPUT);
   digitalWrite(WORK_SIGNAL_PIN, HIGH); // Если плата работает - заработает светодиод. Так лучше, чем индикация по питанию, т.к. появляется возможность сигнализировать об ошибках
   
-  dht.begin();
-  mq2.begin();
-  
   // Инструменты отладки
   if (debugFlag) {
     Serial.begin(9600);
   }
+
+  dht.begin();
+  mq2.begin();
   
   Wire.begin(8);                /* задаем на шине i2c 8 адрес */
   Wire.onReceive(receiveEvent); /* регистрируем полученное событие */
@@ -53,12 +53,14 @@ void setup() {
 void loop() {
   float h = dht.readHumidity(); 
   float t = dht.readTemperature(); 
-  
+  Serial.println("Работаю");
   if (debugFlag) {
     Serial.print("А ето LPG: ");
     Serial.println(mq2.readSmoke());
     Serial.print("А ето монооксид углерада: ");
     Serial.println(mq2.readCO());
+    Serial.print("А ето дымища: ");
+    Serial.println(mq2.readSmoke());
     Serial.print("А ето диоксид углерада: ");
     Serial.println(mq135.getPPM()); 
 

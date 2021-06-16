@@ -19,6 +19,7 @@ IPAddress mqttBroker(192, 168, 0, 94);
 
 void sendMessage() ;
 bool hasIp = false;
+bool mqttConnection = false;
 
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 Task taskSendMessage(TASK_SECOND * 1 , TASK_FOREVER, &sendMessage);
@@ -29,16 +30,23 @@ WiFiClient wifiClient;
 PubSubClient mqttClient(mqttBroker, 1883, mqttCallback, wifiClient);
 
 void sendMessage() {
-//  DynamicJsonDocument doc(1024);
-//  doc["TypeOf"] = "MASTER";
-//  doc["NodeName"] = "master-node";
-//  doc["H"] = "no-data-from-master";
-//  doc["T"] = "no-data-from-master";
-//  String msg;
-//  serializeJson(doc, msg);
-//  mesh.sendBroadcast(msg);
-////  Serial.println(msg);
-//  taskSendMessage.setInterval((TASK_SECOND * 1));
+  if (!mqttConnection) {
+      DynamicJsonDocument doc(1024);
+      doc["NodeNum"] = 1;
+      doc["Info"] = "NO_MQTT";
+      String msg;
+      serializeJson(doc, msg);
+      mesh.sendBroadcast(msg);
+  }
+  else {
+      DynamicJsonDocument doc(1024);
+      doc["NodeNum"] = 1;
+      doc["Info"] = "MQTT";
+      String msg;
+      serializeJson(doc, msg);
+      mesh.sendBroadcast(msg);
+  }
+  taskSendMessage.setInterval((TASK_SECOND * 10));
 }
 
 void receivedCallback(uint32_t from, String &msg) {
@@ -69,7 +77,7 @@ void receivedCallback(uint32_t from, String &msg) {
   Serial.println(data5);
   Serial.println(data6);
    
-   String topic = "ecoiot/from/node1";
+   String topic = "ecoiot/from/system";
    if (dataNum.toInt() == 3 && dataPublish.toInt() == 1) topic = "ecoiot/from/node3";
    else if (dataNum.toInt() == 2 && dataPublish.toInt() == 1) topic = "ecoiot/from/node2";
    if (mqttClient.publish(topic.c_str(), msg.c_str())) Serial.println("Succesful publishing");
@@ -77,41 +85,7 @@ void receivedCallback(uint32_t from, String &msg) {
 }
 
 void mqttCallback(char* topic, uint8_t* payload, unsigned int length) {
-//  char* cleanPayload = (char*)malloc(length+1);
-//  memcpy(cleanPayload, payload, length);
-//  cleanPayload[length] = '\0';
-//  String msg = String(cleanPayload);
-//  free(cleanPayload);
-//
-//  String targetStr = String(topic).substring(16);
-//
-//  if(targetStr == "gateway")
-//  {
-//    if(msg == "getNodes")
-//    {
-//      auto nodes = mesh.getNodeList(true);
-//      String str;
-//      for (auto &&id : nodes)
-//        str += String(id) + String(" ");
-//      mqttClient.publish("ecoiot/from/gateway", str.c_str());
-//    }
-//  }
-//  else if(targetStr == "broadcast") 
-//  {
-//    mesh.sendBroadcast(msg);
-//  }
-//  else
-//  {
-//    uint32_t target = strtoul(targetStr.c_str(), NULL, 10);
-//    if(mesh.isConnected(target))
-//    {
-//      mesh.sendSingle(target, msg);
-//    }
-//    else
-//    {
-//      mqttClient.publish("ecoiot/from/gateway", "Client not connected!");
-//    }
-//  }
+
 }
 
 IPAddress getlocalIP() {
@@ -132,28 +106,17 @@ void nodeTimeAdjustedCallback(int32_t offset) {
 }
 
 void reconnect() {
-  // Loop until we're reconnected
   while (!mqttClient.connected()) {
     Serial.print("Attempting MQTT connection...");
-    // Attempt to connect
-    /*
-     YOU MIGHT NEED TO CHANGE THIS LINE, IF YOU'RE HAVING PROBLEMS WITH MQTT MULTIPLE CONNECTIONS
-     To change the ESP device ID, you will have to give a new name to the ESP8266.
-     Here's how it looks:
-       if (client.connect("ESP8266Client")) {
-     You can do it like this:
-       if (client.connect("ESP1_Office")) {
-     Then, for the other ESP:
-       if (client.connect("ESP2_Garage")) {
-      That should solve your MQTT multiple connections problem
-    */
     if (mqttClient.connect("MQTT_Bridge")) {
+      mqttConnection = true;
       Serial.println("connected");  
       // Subscribe or resubscribe to a topic
       // You can subscribe to more topics (to control more LEDs in this example)
       mqttClient.subscribe("ecoiot/to");
       mqttClient.publish("ecoiot/from","Ready!");
     } else {
+      mqttConnection = false; 
       Serial.print("failed, rc=");
       Serial.print(mqttClient.state());
       Serial.println(" try again in 5 seconds");
@@ -180,8 +143,8 @@ void setup() {
   mesh.setRoot(true);
   mesh.setContainsRoot(true);
   
-//  userScheduler.addTask( taskSendMessage );
-//  taskSendMessage.enable();
+  userScheduler.addTask( taskSendMessage );
+  taskSendMessage.enable();
 }
 
 void loop() {
@@ -206,5 +169,5 @@ void loop() {
     } 
   }
   
-  delay(1000);
+  delay(3000);
 }
