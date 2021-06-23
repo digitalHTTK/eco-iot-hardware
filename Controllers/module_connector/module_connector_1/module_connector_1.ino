@@ -7,8 +7,8 @@
 #define   MESH_PASSWORD   "somethingSneaky"
 #define   MESH_PORT       5555
 
-#define   STATION_SSID     "Qwerty_Beeline"
-#define   STATION_PASSWORD "rukavAAA"
+#define   STATION_SSID     "Qwerty_IoT"
+#define   STATION_PASSWORD "iot_vkr_27"
 
 #define HOSTNAME "MQTT_Bridge"
 
@@ -17,9 +17,18 @@ IPAddress getlocalIP();
 IPAddress myIP(0,0,0,0);
 IPAddress mqttBroker(192, 168, 0, 94);
 
+int    h     = 0;
+float  t     = 0;
+int    co    = 0;
+int    co2   = 0;
+int    lpg   = 0;
+int    smoke = 0;
+
 void sendMessage() ;
 bool hasIp = false;
 bool mqttConnection = false;
+
+int flag = 0;
 
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 Task taskSendMessage(TASK_SECOND * 1 , TASK_FOREVER, &sendMessage);
@@ -78,10 +87,27 @@ void receivedCallback(uint32_t from, String &msg) {
   Serial.println(data6);
    
    String topic = "ecoiot/from/system";
-   if (dataNum.toInt() == 3 && dataPublish.toInt() == 1) topic = "ecoiot/from/node3";
-   else if (dataNum.toInt() == 2 && dataPublish.toInt() == 1) topic = "ecoiot/from/node2";
    if (mqttClient.publish(topic.c_str(), msg.c_str())) Serial.println("Succesful publishing");
    else Serial.println("Publishing failed");
+}
+
+void sendMessageToMqtt() {
+  Serial.println("SEND");
+  DynamicJsonDocument doc(1024);
+  doc["NodeNum"] = 1;
+  doc["PublishData"] = 1;
+  doc["hum"] = h;
+  doc["temp"] = t;
+  doc["co"] = co;
+  doc["co2"] = co2;
+  doc["lpg"] = lpg;
+  doc["smk"] = smoke;
+  String msg;
+  serializeJson(doc, msg);
+  
+  String topic = "ecoiot/from/system";
+  if (mqttClient.publish(topic.c_str(), msg.c_str())) Serial.println("Succesful publishing");
+  else Serial.println("Publishing failed");
 }
 
 void mqttCallback(char* topic, uint8_t* payload, unsigned int length) {
@@ -127,11 +153,10 @@ void reconnect() {
 }
 
 void setup() {
-  Serial.begin(115200); /* открываем серийный порт для дебаггинга */
-//  Wire.begin(D1, D2); /* задаем i2c мост через контакты SDA=D1 и SCL=D2 на NodeMCU */
+  Serial.begin(115200);
+  Wire.begin(D1, D2);
 
-  mesh.setDebugMsgTypes( ERROR | STARTUP );  // set before init() so that you can see startup messages
-  
+  mesh.setDebugMsgTypes( ERROR | STARTUP );
   mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT );
   mesh.onReceive(&receivedCallback);
   mesh.onNewConnection(&newConnectionCallback);
@@ -147,6 +172,12 @@ void setup() {
   taskSendMessage.enable();
 }
 
+void sendEvent(String msg) {
+  Wire.beginTransmission(8); 
+  Wire.write(msg.c_str()); 
+  Wire.endTransmission();
+}
+
 void loop() {
   if (hasIp) {
     if (!mqttClient.connected()) reconnect();
@@ -156,18 +187,67 @@ void loop() {
     Serial.print(".");
   }
   
-  mesh.update();
-  mqttClient.loop();
-
   if(myIP != getlocalIP()){
     myIP = getlocalIP();
     Serial.println("My IP is " + myIP.toString());
     hasIp = true;
 
     if (mqttClient.connect("MQTT_Bridge")) {
+      sendEvent("D");
+      mqttConnection = true;
       mqttClient.subscribe("ecoiot/to");
     } 
   }
+
+  if(flag == 5) {
+    flag = -1;
+    Wire.requestFrom(8, 32); 
+    String requestMsg = "";
+    while(Wire.available()){
+       char c = Wire.read();
+       requestMsg += c;
+    }
+    Serial.print("RECIEVED: ");
+    Serial.println(requestMsg);
   
-  delay(3000);
+    int msg_len = requestMsg.length() + 1;
+    char msg[msg_len];
+    requestMsg.toCharArray(msg, msg_len);
+    char* msg_c = strtok(msg, "/");
+    int i = 0;
+    while (msg_c != NULL) {
+      switch(i) {
+        case 0:
+          h = atoi(msg_c);
+          break;
+        case 1:
+          t = atoi(msg_c);
+          break;
+        case 2:
+          co = atoi(msg_c);
+          break;
+        case 3:
+          co2 = atoi(msg_c);
+          break;
+        case 4:
+          lpg = atoi(msg_c);
+          break;
+        case 5:
+          smoke = atoi(msg_c);
+          break;
+      }
+      i++;
+      msg_c = strtok (NULL, "/");
+    }
+
+    if (h == 0 && t == 0 && co == 0 && co2 == 0 && lpg == 0 && smoke == 0) sendEvent("B");
+    else sendEvent("A");
+
+    if(mqttConnection) sendMessageToMqtt();
+  }
+  flag++;
+    
+  mesh.update();
+  mqttClient.loop();
+  delay(2000);
 }

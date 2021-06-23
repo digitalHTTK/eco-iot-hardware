@@ -17,8 +17,6 @@ int    co2   = 0;
 int    lpg   = 0;
 int    smoke = 0;
 
-bool isPartTwo = false;
-
 Task taskSendMessage(TASK_SECOND * 1 , TASK_FOREVER, &sendMessage);
 
 void sendMessage() {
@@ -78,15 +76,16 @@ void nodeTimeAdjustedCallback(int32_t offset) {
 
 
 void setup() {
-  Serial.begin(115200); /* открываем серийный порт для дебаггинга */
-  Wire.begin(D1, D2); /* задаем i2c мост через контакты SDA=D1 и SCL=D2 на NodeMCU */
+  Serial.begin(115200); 
+  Wire.begin(D1, D2); 
 
-  mesh.setDebugMsgTypes( ERROR | STARTUP );  // set before init() so that you can see startup messages
+  mesh.setDebugMsgTypes( ERROR | STARTUP );
   mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT );
   mesh.onReceive(&receivedCallback);
   mesh.onNewConnection(&newConnectionCallback);
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
+  
   userScheduler.addTask( taskSendMessage );
   taskSendMessage.enable();
 }
@@ -98,65 +97,6 @@ void sendEvent(String msg) {
 }
 
 void loop() { 
-//    if (!isPartTwo) {
-//      Wire.requestFrom(8, 32); 
-//      String requestMsg = "";
-//      while(Wire.available()){
-//         char c = Wire.read();
-//         requestMsg += c;
-//      }
-//      Serial.print("RECIEVED 1: ");
-//      Serial.println(requestMsg);
-//    
-//      String json;
-//      DynamicJsonDocument doc(1024);
-//      json = requestMsg.c_str();
-//      DeserializationError error = deserializeJson(doc, json);
-//      if (error) {
-//        Serial.print("deserializeJson() failed: ");
-//        Serial.println(error.c_str());
-//      }
-//      else Serial.println(requestMsg.c_str());
-//      String data1 = doc["hum"];
-//      String data2 = doc["temp"];
-//      String data3 = doc["co"];
-//
-//      Serial.println(data1);
-//      Serial.println(data2);
-//      
-//      h = data1.toInt();
-//      t = data2.toFloat();
-//      co = data3.toInt();
-//      isPartTwo = true;
-//  }
-//  else {
-//      Wire.requestFrom(8, 32); 
-//      String requestMsg = "";
-//      while(Wire.available()){
-//         char c = Wire.read();
-//         requestMsg += c;
-//      }
-//      Serial.print("RECIEVED 2: ");
-//      Serial.println(requestMsg);
-//    
-//      String json;
-//      DynamicJsonDocument doc(1024);
-//      json = requestMsg.c_str();
-//      DeserializationError error = deserializeJson(doc, json);
-//      if (error) {
-//        Serial.print("deserializeJson() failed: ");
-//        Serial.println(error.c_str());
-//      }
-//      else Serial.println(requestMsg.c_str());
-//      String data4 = doc["co2"];
-//      String data5 = doc["lpg"];
-//      String data6 = doc["smk"];
-//      co2 = data4.toInt();
-//      lpg = data5.toInt();
-//      smoke = data6.toInt();
-//      isPartTwo = false;
-//  }
-
   Wire.requestFrom(8, 32); 
   String requestMsg = "";
   while(Wire.available()){
@@ -201,5 +141,5 @@ void loop() {
   
   mesh.update();
   
-  delay(1000);
+  delay(5000);
 }
